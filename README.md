@@ -51,5 +51,24 @@
 
 ```matlab
 test                % 각 상황별 비교(센서 노이즈, 모델 오차, 제어 오차) 및 전체 통합 비교
+```
 
+---
+## Scenario 1: Deterministic IK
+
+### Methods
+
+- Conventional IK (baseline)
+- Simple Random Search
+- Localized Random Search
+- Enhanced Localized Random Search
+
+## Scenario 2: IK with Noisy Measurements
+
+### Methods
+
+- Conventional IK (baseline)
+- Simple Random Search
+- Localized Random Search
+- Enhanced Localized Random Search
 
