@@ -1,4 +1,4 @@
-%% Robot Motion Planning (이진우)
+%% Robot Motion Planning
 
 % Initialization
 clear;
