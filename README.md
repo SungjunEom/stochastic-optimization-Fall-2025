@@ -2,11 +2,11 @@
 
 이 프로젝트는 7자유도 로봇팔인 **Franka Emika Panda**의 **역기구학(Inverse Kinematics)** 문제를 **확률적 최적화 기법**으로 풀고, MATLAB 기본 제공 역기구학 해석기와 비교하여 실제 환경에서 어떤 방식이 더 강건한지(robust) 평가하는 실험입니다.
 
-## ⚙️ 필요 환경
+## Requirements
 
-- MATLAB R2021a 이상
-- [Robotics Toolbox](https://www.mathworks.com/help/robotics/) 설치
-- `loadrobot("frankaEmikaPanda")` 로봇 모델 사용 가능해야 함
+- MATLAB R2021a and above
+- [Robotics Toolbox](https://www.mathworks.com/help/robotics/)
+- Statistics and Machine Learning Toolbox
 
 ---
 
