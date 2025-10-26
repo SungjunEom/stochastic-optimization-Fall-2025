@@ -12,6 +12,14 @@ clc;
 clear;
 close all;
 
+% --- Add helper functions from 'src' to the path ---
+
+% Get the directory where this script (test.m) is running
+scriptDir = fileparts(mfilename('fullpath')); 
+
+% Add the 'src' subdirectory (which is in the same dir) to the path
+addpath(fullfile(scriptDir, 'src'));
+
 %% 공통 파라미터 설정
 x_d_true = [0.4; 0.2; 0.3; 0; 0; 0]; % 실제 목표 위치 (Ground Truth)
 panda = loadrobot('frankaEmikaPanda', 'DataFormat', 'column');
