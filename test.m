@@ -12,13 +12,16 @@ clc;
 clear;
 close all;
 
-% --- Add helper functions from 'src' to the path ---
+% --- Add 'src' and all its subfolders to the path ---
 
 % Get the directory where this script (test.m) is running
 scriptDir = fileparts(mfilename('fullpath')); 
 
-% Add the 'src' subdirectory (which is in the same dir) to the path
-addpath(fullfile(scriptDir, 'src'));
+% Get the full path to the 'src' directory
+srcDir = fullfile(scriptDir, 'src');
+
+% Add 'src' AND all its subdirectories (like optimizers, utils)
+addpath(genpath(srcDir));
 
 %% 공통 파라미터 설정
 x_d_true = [0.4; 0.2; 0.3; 0; 0; 0]; % 실제 목표 위치 (Ground Truth)
@@ -40,7 +43,7 @@ losses_builtin_s1 = zeros(num_trials, 1);
 for i = 1:num_trials
 
     % IK 솔버 실행
-    [theta_s, ~] = franka_ik_stochastic(x_d_true, theta0, max_iter);
+    [theta_s, ~] = enhanced_localized_random_search(x_d_true, theta0, max_iter);
     [theta_b, ~] = franka_ik_builtin(x_d_true, theta0);
 
     % 실제 목표 위치(x_d_true)와의 오차 계산
@@ -64,7 +67,7 @@ for i = 1:num_trials
     x_d_noisy = x_d_true + obs_noise;
 
     % IK 솔버 실행
-    [theta_s, ~] = franka_ik_stochastic(x_d_noisy, theta0, max_iter);
+    [theta_s, ~] = enhanced_localized_random_search(x_d_noisy, theta0, max_iter);
     [theta_b, ~] = franka_ik_builtin(x_d_noisy, theta0);
 
     % 실제 목표 위치(x_d_true)와의 오차 계산
@@ -85,7 +88,7 @@ losses_builtin_s2 = zeros(num_trials, 1);
 
 for i = 1:num_trials
     % IK 솔버는 정확한 FK 모델을 사용한다고 가정하고 실행
-    [theta_s, ~] = franka_ik_stochastic(x_d_true, theta0, max_iter);
+    [theta_s, ~] = enhanced_localized_random_search(x_d_true, theta0, max_iter);
     [theta_b, ~] = franka_ik_builtin(x_d_true, theta0);
 
     % 실제 로봇의 FK 연산 시 노이즈가 발생한다고 가정
@@ -111,7 +114,7 @@ losses_builtin_s3 = zeros(num_trials, 1);
 
 for i = 1:num_trials
     % IK 솔버 실행
-    [theta_s, ~] = franka_ik_stochastic(x_d_true, theta0, max_iter);
+    [theta_s, ~] = enhanced_localized_random_search(x_d_true, theta0, max_iter);
     [theta_b, ~] = franka_ik_builtin(x_d_true, theta0);
 
     % 계산된 관절각에 제어 오차(노이즈) 추가 (±1도)
