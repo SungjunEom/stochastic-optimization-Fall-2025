@@ -36,3 +36,11 @@ test                % 각 상황별 비교(센서 노이즈, 모델 오차, 제�
 - Localized Random Search
 - Enhanced Localized Random Search
 
+## Scenario 3: IK with Uniformly Random Disturbance
+
+### Methods
+
+- Conventional IK (baseline)
+- Simple Random Search
+- Localized Random Search
+- Enhanced Localized Random Search
