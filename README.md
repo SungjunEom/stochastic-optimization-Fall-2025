@@ -18,7 +18,7 @@ test                % 각 상황별 비교(센서 노이즈, 모델 오차, 제�
 ```
 
 ---
-## Scenario 1: Deterministic IK
+## Scenario 0: Deterministic IK
 
 ### Methods
 
@@ -27,7 +27,16 @@ test                % 각 상황별 비교(센서 노이즈, 모델 오차, 제�
 - Localized Random Search
 - Enhanced Localized Random Search
 
-## Scenario 2: IK with Noisy Measurements
+## Scenario 1: IK with Noisy Measurements
+
+### Methods
+
+- Conventional IK (baseline)
+- Simple Random Search
+- Localized Random Search
+- Enhanced Localized Random Search
+
+## Scenario 2: IK with Model Uncertainty
 
 ### Methods
 

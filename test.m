@@ -1,6 +1,7 @@
-%% Franka Emika Panda IK 비교 실험 통합 스크립트
+%% Franka Emika Panda IK 비교 실험 통합 스크립트 (데이터 저장용)
 %
-% 이 스크립트는 4개의 알고리즘을 4개의 시나리오에 대해 비교합니다.
+% 이 스크립트는 4개의 알고리즘을 4개의 시나리오에 대해 비교하고,
+% 플로팅을 위해 결과를 'ik_comparison_results.mat' 파일로 저장합니다.
 %
 % [알고리즘]
 % 1. Built-in (Baseline)
@@ -13,6 +14,11 @@
 % 1. 센서 노이즈 (관측 불확실성)
 % 2. 로봇 모델 오차 (FK 불확실성)
 % 3. 조인트 제어 오차 (제어 불확실성)
+%
+% [수정]
+% - 시각화/플로팅 코드를 제거했습니다.
+% - 스크립트 마지막에 통계 결과를 .mat 파일로 저장하는 기능을 추가했습니다.
+%
 clc;
 clear;
 close all;
@@ -152,7 +158,6 @@ for j = 1:num_algs
     fprintf('▶ %-10s mean loss: %.6f\n', [alg_names{j} ':'], mean_losses_s3(j));
 end
 fprintf('============================================\n');
-
 % -----------------------------------------------------------------
 % ----- [NEW] 통계 계산 (평균, 표준오차, 95% 신뢰구간) -----
 % -----------------------------------------------------------------
@@ -173,81 +178,33 @@ for k = 1:num_scenarios
     all_sem(k, :) = all_std_dev(k, :) / sqrt(n);
     all_ci_half_width(k, :) = t_value * all_sem(k, :);
 end
+% 시나리오 제목 (플로팅 스크립트에서 사용)
 scenario_titles = {
     '[시나리오 0] Deterministic',
     '[시나리오 1] 센서 노이즈',
     '[시나리오 2] 모델 불확실성',
     '[시나리오 3] 제어 오차'
 };
+fprintf('통계 계산 완료.\n');
 % -----------------------------------------------------------------
-% ----- [MODIFIED] 결과 시각화 (95% 신뢰구간 포함) -----
+% ----- 결과 데이터 파일로 저장 -----
 % -----------------------------------------------------------------
-figure('Name', 'IK Algorithm Comparison (95% CI)');
-for k = 1:num_scenarios
-    subplot(2, 2, k);
+results_filename = 'ik_comparison_results.mat';
+try
+    save(results_filename, ...
+        'all_losses', ...
+        'all_mean_losses', ...
+        'all_ci_half_width', ...
+        'alg_names', ...
+        'scenario_titles', ...
+        'num_trials');
     
-    % 1. Bar plot (평균값)
-    b = bar(all_mean_losses(k, :));
-    hold on;
+    fprintf('\n[데이터 저장] 성공!\n');
+    fprintf('결과가 %s 파일에 저장되었습니다.\n', results_filename);
     
-    % 2. Add error bars (95% 신뢰구간)
-    x_coords = b.XEndPoints; % 막대 중심의 x 좌표 얻기
-    y_values = all_mean_losses(k, :);
-    errors = all_ci_half_width(k, :); % 95% CI 절반 폭
-    
-    % 'k.' : 검은색(k) 점(.) 스타일로 오차 막대 상/하단 표시
-    errorbar(x_coords, y_values, errors, 'k.', 'LineWidth', 1.5, 'HandleVisibility', 'off');
-    
-    hold off;
-    
-    % 3. Styling
-    set(gca, 'XTickLabel', alg_names);
-    if k == 1 || k == 3
-        ylabel('평균 오차 (Loss)');
-    end
-    title(scenario_titles{k});
-    grid on;
+catch e
+    fprintf('\n[데이터 저장] 실패!\n');
+    fprintf('오류 메시지: %s\n', e.message);
 end
-sgtitle('IK 방법별 불확실성 시나리오 성능 비교 (95% 신뢰구간)');
-%%
-% -----------------------------------------------------------------
-% ----- [EXISTING] 최종 자세 시각화 (Scenario 0, Trial 1) -----
-% -----------------------------------------------------------------
-fprintf('\n[시각화] Scenario 0 (Deterministic)의 첫 번째 Trial 결과를 시각화합니다...\n');
-figure('Name', 'IK Final Pose Visualization');
-% 공통 시각화 설정
-view_angles = [145, 25]; % [수평, 수직]
-axis_limits = [-1 1 -1 1 -0.2 1.5]; % [xmin xmax ymin ymax zmin zmax]
-% Gripper joints는 homeConfiguration 값을 사용
-% (stochastic solver들은 7-joint만 반환하므로)
-theta_gripper = theta0_full(8:9);
-for j = 1:num_algs
-    % --- 알고리즘 재실행 (Trial 1 기준) ---
-    solver_func = alg_handles{j};
-    if j == 1 % Built-in solver (Baseline)
-        [theta_sol, ~] = solver_func(x_d_true, theta0);
-        theta_7_joints = theta_sol(1:7);
-    else % Stochastic solvers
-        [theta_7_joints, ~] = solver_func(x_d_true, theta0, max_iter);
-    end
-    
-    % --- 시각화를 위한 전체 configuration (9-joint) 생성 ---
-    % (7 arm joints + 2 gripper joints)
-    % 'panda'가 'column' DataFormat으로 로드되었으므로 'column' 벡터를 전달
-    
-    % [FIXED] Removed the transpose (') to create a column vector
-    config_full_col = [theta_7_joints; theta_gripper];
-    
-    % --- Subplot에 그리기 ---
-    subplot(2, 2, j);
-    
-    % [FIXED] Passed the column vector 'config_full_col'
-    show(panda, config_full_col, 'PreservePlot', false);
-    
-    view(view_angles);
-    axis(axis_limits);
-    title(alg_names{j});
-    grid on;
-end
-sgtitle('Final IK Pose (Scenario 0, Trial 1)');
-fprintf('시각화 완료.\n');
+fprintf('============================================\n');
+fprintf('시뮬레이션 완료.\n');
