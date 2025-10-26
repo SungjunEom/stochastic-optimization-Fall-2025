@@ -1,10 +1,27 @@
-%% IK 비교 실험 결과 플로팅 스크립트
+%% IK 비교 실험 결과 플로팅 스크립트 (선택적 플로팅)
 %
 % 'run_ik_comparison_with_save.m' 스크립트 실행 후 생성된
 % 'ik_comparison_results.mat' 파일을 읽어와 그래프를 그립니다.
+%
+% [수정]
+% - 'algs_to_plot' 변수를 추가하여 원하는 알고리즘만 선택적으로
+%   플로팅할 수 있도록 수정했습니다.
 clc;
 clear;
 close all;
+% -----------------------------------------------------------------
+% ----- [NEW] 플로팅할 알고리즘 선택 -----
+% -----------------------------------------------------------------
+% 아래 리스트에서 플로팅할 알고리즘 이름만 남기세요.
+algs_to_plot = {
+    'Built-in', ...
+    'SRS', ...
+    'LRS', ...
+    'ELRS'
+};
+% 예시: 'Built-in'과 'ELRS'만 비교하고 싶다면:
+% algs_to_plot = {'Built-in', 'ELRS'};
+% -----------------------------------------------------------------
 % --- 결과 파일 로드 ---
 results_filename = 'ik_comparison_results.mat';
 if ~exist(results_filename, 'file')
@@ -21,30 +38,46 @@ for i = 1:length(required_vars)
 end
 fprintf('데이터 로드 완료.\n');
 % -----------------------------------------------------------------
-% ----- 결과 시각화 (95% 신뢰구간 포함) -----
+% ----- [NEW] 선택된 알고리즘 인덱스 찾기 -----
+% -----------------------------------------------------------------
+[~, plot_indices] = ismember(algs_to_plot, alg_names);
+% 0인 인덱스 (일치하는 이름을 못찾은 경우) 제거
+plot_indices = plot_indices(plot_indices > 0);
+% 정렬 (algs_to_plot 순서가 아닌 alg_names의 원래 순서대로)
+plot_indices = sort(plot_indices);
+if isempty(plot_indices)
+    error('선택된 알고리즘(%s) 중 유효한 이름이 없습니다. ''alg_names''를 확인하세요.', strjoin(algs_to_plot, ', '));
+end
+% --- 플로팅할 데이터 필터링 ---
+mean_losses_filtered = all_mean_losses(:, plot_indices);
+ci_half_width_filtered = all_ci_half_width(:, plot_indices);
+alg_names_filtered = alg_names(plot_indices);
+fprintf('선택된 알고리즘으로 플로팅합니다: %s\n', strjoin(alg_names_filtered, ', '));
+% -----------------------------------------------------------------
+% ----- [MODIFIED] 결과 시각화 (95% 신뢰구간 포함) -----
 % -----------------------------------------------------------------
 fprintf('결과 플로팅 중...\n');
 figure('Name', 'IK Algorithm Comparison (95% CI)');
-num_scenarios = size(all_mean_losses, 1);
+num_scenarios = size(all_mean_losses, 1); % 시나리오 개수는 전체 데이터 기준
 for k = 1:num_scenarios
     subplot(2, 2, k);
     
-    % 1. Bar plot (평균값)
-    b = bar(all_mean_losses(k, :));
+    % 1. Bar plot (필터링된 평균값)
+    b = bar(mean_losses_filtered(k, :));
     hold on;
     
-    % 2. Add error bars (95% 신뢰구간)
+    % 2. Add error bars (필터링된 95% 신뢰구간)
     x_coords = b.XEndPoints; % 막대 중심의 x 좌표 얻기
-    y_values = all_mean_losses(k, :);
-    errors = all_ci_half_width(k, :); % 95% CI 절반 폭
+    y_values = mean_losses_filtered(k, :);
+    errors = ci_half_width_filtered(k, :); % 95% CI 절반 폭
     
     % 'k.' : 검은색(k) 점(.) 스타일로 오차 막대 상/하단 표시
     errorbar(x_coords, y_values, errors, 'k.', 'LineWidth', 1.5, 'HandleVisibility', 'off');
     
     hold off;
     
-    % 3. Styling
-    set(gca, 'XTickLabel', alg_names);
+    % 3. Styling (필터링된 이름 사용)
+    set(gca, 'XTickLabel', alg_names_filtered);
     if k == 1 || k == 3
         ylabel('평균 오차 (Loss)');
     end
@@ -53,3 +86,4 @@ for k = 1:num_scenarios
 end
 sgtitle('IK 방법별 불확실성 시나리오 성능 비교 (95% 신뢰구간)');
 fprintf('플로팅 완료.\n');
+
