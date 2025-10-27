@@ -13,14 +13,14 @@ close all;
 % ----- [NEW] 플로팅할 알고리즘 선택 -----
 % -----------------------------------------------------------------
 % 아래 리스트에서 플로팅할 알고리즘 이름만 남기세요.
-algs_to_plot = {
-    'Built-in', ...
-    'SRS', ...
-    'LRS', ...
-    'ELRS'
-};
+% algs_to_plot = {
+%     'Built-in', ...
+%     'SRS', ...
+%     'LRS', ...
+%     'ELRS'
+% };
 % 예시: 'Built-in'과 'ELRS'만 비교하고 싶다면:
-% algs_to_plot = {'Built-in', 'ELRS'};
+algs_to_plot = {'Built-in', 'LRS', 'ELRS'};
 % -----------------------------------------------------------------
 % --- 결과 파일 로드 ---
 results_filename = 'ik_comparison_results.mat';

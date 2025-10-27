@@ -43,6 +43,8 @@ function loss = ik_loss(theta, x_d)
     joint_regularization_error = norm(theta - theta_home)^2;
 
     % --- 3. 최종 손실 ---
-    loss = pose_error + w * joint_regularization_error;
+    % loss = pose_error + w * joint_regularization_error;
+    % No regularization
+    loss = pose_error;
 
 end
