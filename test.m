@@ -33,10 +33,16 @@ panda = loadrobot('frankaEmikaPanda', 'DataFormat', 'column');
 theta0_full = homeConfiguration(panda);
 theta0 = theta0_full(1:7); % 7개 관절만 사용
 num_trials = 20; % 반복 실험 횟수
+<<<<<<< HEAD
 max_iter = 1000; % 최적화 반복 횟수
 rho = 0.005; % for stochastic algorithms
 learning_rate = 0.01; % for gradient-based algorithms
 sigma = 0.005; % observation noise level (5mm position, ~0.3 deg orientation)
+=======
+max_iter = 1000; % Stochastic IK 반복 횟수
+rho = 0.05; % for algorithms
+sigma = 0.005; % for noise
+>>>>>>> parent of c3e3bdc (Changed font size to be 24)
 % --- 알고리즘 정의 ---
 % 함수 핸들을 셀 배열로 정의
 alg_handles = {
