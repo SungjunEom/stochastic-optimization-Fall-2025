@@ -1,8 +1,14 @@
 % 프랑카 판다 역기구학을 위한 확률적 최적화 (Simple Random Search)
-function [theta_opt, history] = simple_random_search(x_d, theta0, max_iter, rho)
+function [theta_opt, history] = simple_random_search(x_d, theta0, max_iter, rho, noise_level)
     % x_d: 목표 엔드이펙터 위치 (6x1 벡터: 위치 + 자세)
     % theta0: 초기 관절각 추정치 (7x1)
     % max_iter: 최대 반복 횟수
+    % rho: 탐색 범위 (사용 안 함, 인터페이스 통일용)
+    % noise_level: 관측 노이즈 레벨 (default: 0)
+    
+    if nargin < 5
+        noise_level = 0;
+    end
 
     % --- 로봇 관절 한계 (알고리즘의 'Θ') ---
     q_min = [-2.8973; -1.7628; -2.8973; -3.0718; -2.8973; -0.0175; -2.8973];
@@ -15,15 +21,16 @@ function [theta_opt, history] = simple_random_search(x_d, theta0, max_iter, rho)
     history = zeros(max_iter, length(theta_hat));
     
     % 현재 최고 손실값 (L(θ̂k))
-    L_k = ik_loss(theta_hat, x_d);
+    % Noisy observation 환경에서는 여러 번 평가하여 평균 사용
+    L_k = ik_loss_noisy(theta_hat, x_d, noise_level);
     
     for k = 1:max_iter
         % (Step 1) 도메인 'Θ' 전체에서 새로운 랜덤 후보 생성
         % (q_min, q_max) 범위 내에서 균일 분포로 샘플링
         theta_new = q_min + q_range .* rand(size(theta_hat));
         
-        % (Step 2) 새 후보 평가
-        L_new = ik_loss(theta_new, x_d);
+        % (Step 2) 새 후보 평가 (Noisy observation)
+        L_new = ik_loss_noisy(theta_new, x_d, noise_level);
         
         % (Step 3) 개선 여부 확인
         if L_new < L_k

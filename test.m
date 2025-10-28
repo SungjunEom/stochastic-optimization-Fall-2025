@@ -4,16 +4,17 @@
 % 플로팅을 위해 결과를 'ik_comparison_results.mat' 파일로 저장합니다.
 %
 % [알고리즘]
-% 1. Built-in (Baseline)
-% 2. Simple Random Search (SRS)
-% 3. Localized Random Search (LRS)
-% 4. Enhanced Localized Random Search (ELRS)
+% 1. Gradient Descent (GD) - Numerical gradient with momentum
+% 2. Adam Optimizer (Adam) - Adaptive learning rate
+% 3. Simple Random Search (SRS)
+% 4. Localized Random Search (LRS)
+% 5. Enhanced Localized Random Search (ELRS)
 %
 % [시나리오]
 % 0. Deterministic (노이즈 없음)
-% 1. 센서 노이즈 (관측 불확실성)
-% 2. 로봇 모델 오차 (FK 불확실성)
-% 3. 조인트 제어 오차 (제어 불확실성)
+% 1. Noisy Observation (매 iteration마다 센서 노이즈)
+% 2. FK 모델 불확실성 (최적화 중 FK에 오차)
+% 3. 조인트 제어 오차 (최적화 후 제어 오차)
 %
 % [수정]
 % - 시각화/플로팅 코드를 제거했습니다.
@@ -32,39 +33,42 @@ panda = loadrobot('frankaEmikaPanda', 'DataFormat', 'column');
 theta0_full = homeConfiguration(panda);
 theta0 = theta0_full(1:7); % 7개 관절만 사용
 num_trials = 20; % 반복 실험 횟수
-max_iter = 1000; % Stochastic IK 반복 횟수
-rho = 0.005; % for algorithms
-sigma = 0.005; % for noise
+max_iter = 1000; % 최적화 반복 횟수
+rho = 0.005; % for stochastic algorithms
+learning_rate = 0.01; % for gradient-based algorithms
+sigma = 0.005; % observation noise level (5mm position, ~0.3 deg orientation)
 % --- 알고리즘 정의 ---
 % 함수 핸들을 셀 배열로 정의
 alg_handles = {
-    @franka_ik_builtin, ...
+    @gradient_descent_ik, ...
+    @adam_ik, ...
     @simple_random_search, ...
     @localized_random_search, ...
     @enhanced_localized_random_search
 };
 % 그래프 및 출력용 이름
-alg_names = {'Built-in', 'SRS', 'LRS', 'ELRS'};
+alg_names = {'GD', 'Adam', 'SRS', 'LRS', 'ELRS'};
 num_algs = length(alg_names);
 num_scenarios = 4; % 시나리오 개수
 fprintf('프랑카 판다 로봇 IK 비교 실험을 시작합니다.\n');
 fprintf('알고리즘: %s\n', strjoin(alg_names, ', '));
 fprintf('============================================\n');
-%% 시나리오 0: Deterministic
+%% 시나리오 0: Deterministic (노이즈 없음)
 fprintf('\n[시나리오 0: Deterministic] 실험 중...\n');
 losses_s0 = zeros(num_trials, num_algs);
 for i = 1:num_trials
     for j = 1:num_algs
         solver_func = alg_handles{j};
         
-        if j == 1 % Built-in solver (Baseline)
-            [theta_sol, ~] = solver_func(x_d_true, theta0);
-            theta_j = theta_sol(1:7);
-        else % Stochastic solvers
-            [theta_j, ~] = solver_func(x_d_true, theta0, max_iter, rho);
+        if j <= 2 % Gradient-based solvers (GD, Adam)
+            % noise_level = 0 (노이즈 없음)
+            [theta_j, ~] = solver_func(x_d_true, theta0, max_iter, learning_rate, 0);
+        else % Stochastic solvers (SRS, LRS, ELRS)
+            % noise_level = 0 (노이즈 없음)
+            [theta_j, ~] = solver_func(x_d_true, theta0, max_iter, rho, 0);
         end
         
-        % 실제 목표 위치(x_d_true)와의 오차 계산
+        % 실제 목표 위치(x_d_true)와의 오차 계산 (deterministic)
         losses_s0(i, j) = ik_loss(theta_j, x_d_true);
     end
 end
@@ -72,24 +76,24 @@ mean_losses_s0 = mean(losses_s0, 1);
 for j = 1:num_algs
     fprintf('▶ %-10s mean loss: %.6f\n', [alg_names{j} ':'], mean_losses_s0(j));
 end
-%% 시나리오 1: 센서 노이즈 (관측 불확실성)
-% 의미: "센서가 목표 위치를 약간 잘못 알려줌"
-fprintf('\n[시나리오 1: 센서 노이즈] 실험 중...\n');
+%% 시나리오 1: Noisy Observation (센서 노이즈)
+% 의미: "매 iteration마다 센서가 현재 위치를 노이즈와 함께 관측"
+% 진짜 noisy observation! Gradient-based는 noisy gradient로 고생할 것
+fprintf('\n[시나리오 1: Noisy Observation] 실험 중...\n');
 losses_s1 = zeros(num_trials, num_algs);
 for i = 1:num_trials
-    % 관측 노이즈 추가 (위치 ±5mm)
-    obs_noise = sigma * randn(6,1);
-    x_d_noisy = x_d_true + obs_noise;
     for j = 1:num_algs
         solver_func = alg_handles{j};
         
-        if j == 1 % Built-in solver
-            [theta_sol, ~] = solver_func(x_d_noisy, theta0);
-            theta_j = theta_sol(1:7);
+        if j <= 2 % Gradient-based solvers
+            % 매 iteration마다 noisy gradient 계산
+            [theta_j, ~] = solver_func(x_d_true, theta0, max_iter, learning_rate, sigma);
         else % Stochastic solvers
-            [theta_j, ~] = solver_func(x_d_noisy, theta0, max_iter, rho);
+            % 매 iteration마다 noisy observation 사용
+            [theta_j, ~] = solver_func(x_d_true, theta0, max_iter, rho, sigma);
         end
-        % 실제 목표 위치(x_d_true)와의 오차 계산
+        
+        % 최종 평가: 실제 목표 위치와의 오차 (deterministic)
         losses_s1(i, j) = ik_loss(theta_j, x_d_true);
     end
 end
@@ -97,57 +101,54 @@ mean_losses_s1 = mean(losses_s1, 1);
 for j = 1:num_algs
     fprintf('▶ %-10s mean loss: %.6f\n', [alg_names{j} ':'], mean_losses_s1(j));
 end
-%% 시나리오 2: 모델 불확실성 (FK 오차)
-% 의미: "Forward kinematics 모델에 오차가 있음"
-fprintf('\n[시나리오 2: 모델 불확실성] 실험 중...\n');
+%% 시나리오 2: FK 모델 불확실성
+% 의미: "최적화 과정에서 FK 모델에 오차가 있음"
+% 시나리오 1과 동일하게 noisy observation을 사용 (동일한 효과)
+fprintf('\n[시나리오 2: FK 모델 불확실성] 실험 중...\n');
 losses_s2 = zeros(num_trials, num_algs);
 for i = 1:num_trials
-    
-    theta_solutions = cell(num_algs, 1);
-    
-    % 1. 모든 솔버로 θ 계산 (정확한 x_d 사용)
     for j = 1:num_algs
         solver_func = alg_handles{j};
-        if j == 1
-            [theta_sol, ~] = solver_func(x_d_true, theta0);
-            theta_solutions{j} = theta_sol(1:7);
-        else
-            [theta_solutions{j}, ~] = solver_func(x_d_true, theta0, max_iter, rho);
+        
+        if j <= 2 % Gradient-based solvers
+            % FK 모델 오차로 인한 noisy gradient
+            [theta_j, ~] = solver_func(x_d_true, theta0, max_iter, learning_rate, sigma);
+        else % Stochastic solvers
+            % FK 모델 오차로 인한 noisy observation
+            [theta_j, ~] = solver_func(x_d_true, theta0, max_iter, rho, sigma);
         end
-    end
-    % 2. 동일한 FK 노이즈를 적용하여 실제 위치 계산 및 오차 평가
-    fk_noise = sigma * randn(6,1);
-    for j = 1:num_algs
-        x_actual = franka_forward_kinematics(theta_solutions{j}) + fk_noise;
-        % 최종 위치와 실제 목표 위치(x_d_true)와의 오차 계산
-        losses_s2(i, j) = norm(x_actual - x_d_true);
+        
+        % 최종 평가: 실제 목표 위치와의 오차 (deterministic)
+        losses_s2(i, j) = ik_loss(theta_j, x_d_true);
     end
 end
 mean_losses_s2 = mean(losses_s2, 1);
 for j = 1:num_algs
     fprintf('▶ %-10s mean loss: %.6f\n', [alg_names{j} ':'], mean_losses_s2(j));
 end
-%% 시나리오 3: 제어 오차 (조인트 노이즈)
+%% 시나리오 3: 조인트 제어 오차
 % 의미: "계산된 관절각 θ를 로봇이 정확히 따라가지 못함"
-fprintf('\n[시나리오 3: 제어 오차] 실험 중...\n');
+% 주의: 이 노이즈는 최적화 후에만 적용됨 (최적화 중엔 의미 없음)
+fprintf('\n[시나리오 3: 조인트 제어 오차] 실험 중...\n');
 losses_s3 = zeros(num_trials, num_algs);
 for i = 1:num_trials
     
     theta_solutions = cell(num_algs, 1);
     
-    % 1. 모든 솔버로 θ 계산 (정확한 x_d 사용)
+    % 1. 모든 솔버로 θ 계산 (깨끗한 환경에서 최적화)
     for j = 1:num_algs
         solver_func = alg_handles{j};
-        if j == 1
-            [theta_sol, ~] = solver_func(x_d_true, theta0);
-            theta_solutions{j} = theta_sol(1:7);
-        else
-            [theta_solutions{j}, ~] = solver_func(x_d_true, theta0, max_iter, rho);
+        if j <= 2 % Gradient-based solvers
+            % noise_level = 0 (제어 노이즈는 나중에 추가됨)
+            [theta_solutions{j}, ~] = solver_func(x_d_true, theta0, max_iter, learning_rate, 0);
+        else % Stochastic solvers
+            % noise_level = 0 (제어 노이즈는 나중에 추가됨)
+            [theta_solutions{j}, ~] = solver_func(x_d_true, theta0, max_iter, rho, 0);
         end
     end
+    
     % 2. 동일한 제어 노이즈를 적용하여 실제 위치 계산 및 오차 평가
-    control_noise = deg2rad(1.0) * randn(7,1); % original
-    % control_noise = deg2rad(sigma) * randn(7,1);
+    control_noise = deg2rad(1.0) * randn(7,1); % 1도 정도의 제어 오차
     for j = 1:num_algs
         theta_actual = theta_solutions{j} + control_noise;
         x_actual = franka_forward_kinematics(theta_actual);
@@ -184,9 +185,9 @@ end
 % 시나리오 제목 (플로팅 스크립트에서 사용)
 scenario_titles = {
     '[시나리오 0] Deterministic',
-    '[시나리오 1] 센서 노이즈',
-    '[시나리오 2] 모델 불확실성',
-    '[시나리오 3] 제어 오차'
+    '[시나리오 1] Noisy Observation',
+    '[시나리오 2] FK 모델 불확실성',
+    '[시나리오 3] 조인트 제어 오차'
 };
 fprintf('통계 계산 완료.\n');
 % -----------------------------------------------------------------

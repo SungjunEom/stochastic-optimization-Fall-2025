@@ -1,8 +1,14 @@
 % 프랑카 판다 역기구학을 위한 확률적 최적화 (Enhanced Localized Random Search)
-function [theta_opt, history] = enhanced_localized_random_search(x_d, theta0, max_iter, rho)
+function [theta_opt, history] = enhanced_localized_random_search(x_d, theta0, max_iter, rho, noise_level)
     % x_d: 목표 엔드이펙터 위치 (6x1 벡터: 위치 + 자세)
     % theta0: 초기 관절각 추정치 (7x1)
     % max_iter: 최대 반복 횟수
+    % rho: 랜덤 탐색 범위
+    % noise_level: 관측 노이즈 레벨 (default: 0)
+    
+    if nargin < 5
+        noise_level = 0;
+    end
 
     % --- 로봇 관절 한계 (알고리즘의 'Θ') ---
     % Franka Emika Panda joint limits (radians)
@@ -23,7 +29,7 @@ function [theta_opt, history] = enhanced_localized_random_search(x_d, theta0, ma
     
     % (Step 4의 L(θ̂k))
     % 현재(최고) 손실값을 캐싱하여 불필요한 계산 방지
-    L_k = ik_loss(theta_hat, x_d);
+    L_k = ik_loss_noisy(theta_hat, x_d, noise_level);
     
     for k = 1:max_iter
         % (Step 3) Generate a zero-mean r.v. dk
@@ -34,8 +40,8 @@ function [theta_opt, history] = enhanced_localized_random_search(x_d, theta0, ma
         % "move ... to the nearest valid point within Θ"
         theta_new_1 = clamp_to_limits(theta_try_1, q_min, q_max);
         
-        % (Step 6) 첫 번째 후보 평가
-        L_new_1 = ik_loss(theta_new_1, x_d);
+        % (Step 6) 첫 번째 후보 평가 (Noisy observation)
+        L_new_1 = ik_loss_noisy(theta_new_1, x_d, noise_level);
         if L_new_1 < L_k
             theta_hat = theta_new_1;   % θ̂k+1 ← θnew
             b = b + alpha * d;         % bk+1 ← bk + 0.4dk
@@ -48,8 +54,8 @@ function [theta_opt, history] = enhanced_localized_random_search(x_d, theta0, ma
             % (범위 내에 있으면 원본값, 벗어나면 가장 가까운 값 반환)
             theta_new_2 = clamp_to_limits(theta_try_2, q_min, q_max);
             
-            % (Step 8) 두 번째 후보 평가
-            L_new_2 = ik_loss(theta_new_2, x_d);
+            % (Step 8) 두 번째 후보 평가 (Noisy observation)
+            L_new_2 = ik_loss_noisy(theta_new_2, x_d, noise_level);
             if L_new_2 < L_k
                 theta_hat = theta_new_2;   % θ̂k+1 ← θnew
                 b = b - alpha * d;         % bk+1 ← bk - 0.4dk
