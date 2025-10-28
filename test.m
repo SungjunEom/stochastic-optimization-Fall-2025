@@ -33,6 +33,8 @@ theta0_full = homeConfiguration(panda);
 theta0 = theta0_full(1:7); % 7개 관절만 사용
 num_trials = 20; % 반복 실험 횟수
 max_iter = 1000; % Stochastic IK 반복 횟수
+rho = 0.05; % for algorithms
+sigma = 0.005; % for noise
 % --- 알고리즘 정의 ---
 % 함수 핸들을 셀 배열로 정의
 alg_handles = {
@@ -59,7 +61,7 @@ for i = 1:num_trials
             [theta_sol, ~] = solver_func(x_d_true, theta0);
             theta_j = theta_sol(1:7);
         else % Stochastic solvers
-            [theta_j, ~] = solver_func(x_d_true, theta0, max_iter);
+            [theta_j, ~] = solver_func(x_d_true, theta0, max_iter, rho);
         end
         
         % 실제 목표 위치(x_d_true)와의 오차 계산
@@ -76,7 +78,7 @@ fprintf('\n[시나리오 1: 센서 노이즈] 실험 중...\n');
 losses_s1 = zeros(num_trials, num_algs);
 for i = 1:num_trials
     % 관측 노이즈 추가 (위치 ±5mm)
-    obs_noise = 0.005 * randn(6,1);
+    obs_noise = sigma * randn(6,1);
     x_d_noisy = x_d_true + obs_noise;
     for j = 1:num_algs
         solver_func = alg_handles{j};
@@ -85,7 +87,7 @@ for i = 1:num_trials
             [theta_sol, ~] = solver_func(x_d_noisy, theta0);
             theta_j = theta_sol(1:7);
         else % Stochastic solvers
-            [theta_j, ~] = solver_func(x_d_noisy, theta0, max_iter);
+            [theta_j, ~] = solver_func(x_d_noisy, theta0, max_iter, rho);
         end
         % 실제 목표 위치(x_d_true)와의 오차 계산
         losses_s1(i, j) = ik_loss(theta_j, x_d_true);
@@ -110,11 +112,11 @@ for i = 1:num_trials
             [theta_sol, ~] = solver_func(x_d_true, theta0);
             theta_solutions{j} = theta_sol(1:7);
         else
-            [theta_solutions{j}, ~] = solver_func(x_d_true, theta0, max_iter);
+            [theta_solutions{j}, ~] = solver_func(x_d_true, theta0, max_iter, rho);
         end
     end
     % 2. 동일한 FK 노이즈를 적용하여 실제 위치 계산 및 오차 평가
-    fk_noise = 0.005 * randn(6,1);
+    fk_noise = sigma * randn(6,1);
     for j = 1:num_algs
         x_actual = franka_forward_kinematics(theta_solutions{j}) + fk_noise;
         % 최종 위치와 실제 목표 위치(x_d_true)와의 오차 계산
@@ -140,11 +142,12 @@ for i = 1:num_trials
             [theta_sol, ~] = solver_func(x_d_true, theta0);
             theta_solutions{j} = theta_sol(1:7);
         else
-            [theta_solutions{j}, ~] = solver_func(x_d_true, theta0, max_iter);
+            [theta_solutions{j}, ~] = solver_func(x_d_true, theta0, max_iter, rho);
         end
     end
     % 2. 동일한 제어 노이즈를 적용하여 실제 위치 계산 및 오차 평가
-    control_noise = deg2rad(1.0) * randn(7,1);
+    control_noise = deg2rad(1.0) * randn(7,1); % original
+    % control_noise = deg2rad(sigma) * randn(7,1);
     for j = 1:num_algs
         theta_actual = theta_solutions{j} + control_noise;
         x_actual = franka_forward_kinematics(theta_actual);

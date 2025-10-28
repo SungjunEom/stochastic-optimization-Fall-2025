@@ -1,5 +1,5 @@
 % 프랑카 판다 역기구학을 위한 확률적 최적화 (Simple Random Search)
-function [theta_opt, history] = simple_random_search(x_d, theta0, max_iter)
+function [theta_opt, history] = simple_random_search(x_d, theta0, max_iter, rho)
     % x_d: 목표 엔드이펙터 위치 (6x1 벡터: 위치 + 자세)
     % theta0: 초기 관절각 추정치 (7x1)
     % max_iter: 최대 반복 횟수

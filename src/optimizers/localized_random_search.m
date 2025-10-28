@@ -1,5 +1,5 @@
 % 프랑카 판다 역기구학을 위한 확률적 최적화 (Localized Random Search)
-function [theta_opt, history] = localized_random_search(x_d, theta0, max_iter)
+function [theta_opt, history] = localized_random_search(x_d, theta0, max_iter, rho)
     % x_d: 목표 엔드이펙터 위치 (6x1 벡터: 위치 + 자세)
     % theta0: 초기 관절각 추정치 (7x1)
     % max_iter: 최대 반복 횟수
@@ -9,7 +9,7 @@ function [theta_opt, history] = localized_random_search(x_d, theta0, max_iter)
     q_max = [ 2.8973;  1.7628;  2.8973; -0.0698;  2.8973;  3.7525;  2.8973];
 
     % --- 하이퍼파라미터 ---
-    rho = 0.1;       % 랜덤 탐색 범위 (d_k 생성용)
+    % rho = 0.1;       % 랜덤 탐색 범위 (d_k 생성용)
     
     % --- 초기화 ---
     % (Step 4의 θ̂k)
