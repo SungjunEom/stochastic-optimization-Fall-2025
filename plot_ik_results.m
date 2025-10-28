@@ -13,14 +13,14 @@ close all;
 % ----- [NEW] 플로팅할 알고리즘 선택 -----
 % -----------------------------------------------------------------
 % 아래 리스트에서 플로팅할 알고리즘 이름만 남기세요.
-% algs_to_plot = {
-%     'Built-in', ...
-%     'SRS', ...
-%     'LRS', ...
-%     'ELRS'
-% };
+algs_to_plot = {
+    'Built-in', ...
+    'SRS', ...
+    'LRS', ...
+    'ELRS'
+};
 % 예시: 'Built-in'과 'ELRS'만 비교하고 싶다면:
-algs_to_plot = {'Built-in', 'LRS', 'ELRS'};
+% algs_to_plot = {'Built-in', 'LRS', 'ELRS'};
 % -----------------------------------------------------------------
 % --- 결과 파일 로드 ---
 results_filename = 'ik_comparison_results.mat';
@@ -82,8 +82,13 @@ for k = 1:num_scenarios
         ylabel('평균 오차 (Loss)');
     end
     title(scenario_titles{k});
+    
+    % ----- [MODIFIED] Set Font Size -----
+    set(gca, 'FontSize', 24);
+    % -------------------------------------
+    
     grid on;
 end
-sgtitle('IK 방법별 불확실성 시나리오 성능 비교 (95% 신뢰구간)');
+sgtitle('IK 방법별 불확실성 시나리오 성능 비교 (95% 신뢰구간)', 'FontSize', 24);
 fprintf('플로팅 완료.\n');
 

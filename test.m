@@ -33,7 +33,7 @@ theta0_full = homeConfiguration(panda);
 theta0 = theta0_full(1:7); % 7개 관절만 사용
 num_trials = 20; % 반복 실험 횟수
 max_iter = 1000; % Stochastic IK 반복 횟수
-rho = 0.05; % for algorithms
+rho = 0.005; % for algorithms
 sigma = 0.005; % for noise
 % --- 알고리즘 정의 ---
 % 함수 핸들을 셀 배열로 정의
